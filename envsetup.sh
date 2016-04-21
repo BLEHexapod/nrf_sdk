@@ -54,9 +54,13 @@ function mkc() {
 }
 
 function mkdocs {
-    local doxyFile = $SDK_ROOT/documentation/Doxyfile
     mkdir $SDK_ROOT/tmp
-    cp $(find $SDK_ROOT/apps/nrf_*/include -type f -name '*.c') $SDK_ROOT/tmp
-    sed -i 's/OUTPUT_DIRECTORY/OUTPUT_DIRECTORY = $SDK_ROOT/documentation/' doxyFile
-    sed -i 's/INPUT/INPUT = $SDK_ROOT/tmp'
+    cp $(find $SDK_ROOT/apps/nrf_*/include -type f -name '*.h') $SDK_ROOT/tmp
+    sed -i "s|MY_OUTPUT_DIRECTORY|OUTPUT_DIRECTORY = $SDK_ROOT/documentation|g" $SDK_ROOT/documentation/Doxyfile
+    sed -i "s|MY_INPUT|INPUT = $SDK_ROOT/tmp|g" $SDK_ROOT/documentation/Doxyfile
+    doxygen $SDK_ROOT/documentation/Doxyfile
+    # UNDO changes
+    sed -i "s|OUTPUT_DIRECTORY = $SDK_ROOT/documentation|MY_OUTPUT_DIRECTORY|g" documentation/Doxyfile
+    sed -i "s|INPUT = $SDK_ROOT/tmp|MY_INPUT|g" $SDK_ROOT/documentation/Doxyfile
+    rm -r  $SDK_ROOT/tmp
 }
