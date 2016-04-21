@@ -1,0 +1,6 @@
+.repo/
+apps/
+tmp/
+documentation/html/
+documentation/latex/
+manifest/
