@@ -1,5 +1,5 @@
 /*
-    FreeRTOS V8.2.3 - Copyright (C) 2015 Real Time Engineers Ltd.
+    FreeRTOS V8.2.1 - Copyright (C) 2015 Real Time Engineers Ltd.
     All rights reserved
 
     VISIT http://www.FreeRTOS.org TO ENSURE YOU ARE USING THE LATEST VERSION.
@@ -8,7 +8,7 @@
 
     FreeRTOS is free software; you can redistribute it and/or modify it under
     the terms of the GNU General Public License (version 2) as published by the
-    Free Software Foundation >>>> AND MODIFIED BY <<<< the FreeRTOS exception.
+    Free Software Foundation >>!AND MODIFIED BY!<< the FreeRTOS exception.
 
     ***************************************************************************
     >>!   NOTE: The modification to the GPL is included to allow you to     !<<
@@ -189,7 +189,7 @@ typedef xQUEUE Queue_t;
 	/* The queue registry is simply an array of QueueRegistryItem_t structures.
 	The pcQueueName member of a structure being NULL is indicative of the
 	array position being vacant. */
-	PRIVILEGED_DATA QueueRegistryItem_t xQueueRegistry[ configQUEUE_REGISTRY_SIZE ];
+	QueueRegistryItem_t xQueueRegistry[ configQUEUE_REGISTRY_SIZE ];
 
 #endif /* configQUEUE_REGISTRY_SIZE */
 
@@ -315,6 +315,7 @@ QueueHandle_t xQueueGenericCreate( const UBaseType_t uxQueueLength, const UBaseT
 Queue_t *pxNewQueue;
 size_t xQueueSizeInBytes;
 QueueHandle_t xReturn = NULL;
+int8_t *pcAllocatedBuffer;
 
 	/* Remove compiler warnings about unused parameters should
 	configUSE_TRACE_FACILITY not be set to 1. */
@@ -335,10 +336,12 @@ QueueHandle_t xReturn = NULL;
 	}
 
 	/* Allocate the new queue structure and storage area. */
-	pxNewQueue = ( Queue_t * ) pvPortMalloc( sizeof( Queue_t ) + xQueueSizeInBytes );
+	pcAllocatedBuffer = ( int8_t * ) pvPortMalloc( sizeof( Queue_t ) + xQueueSizeInBytes );
 
-	if( pxNewQueue != NULL )
+	if( pcAllocatedBuffer != NULL )
 	{
+		pxNewQueue = ( Queue_t * ) pcAllocatedBuffer; /*lint !e826 MISRA The buffer cannot be too small because it was dimensioned by sizeof( Queue_t ) + xQueueSizeInBytes. */
+
 		if( uxItemSize == ( UBaseType_t ) 0 )
 		{
 			/* No RAM was allocated for the queue storage area, but PC head
@@ -350,8 +353,8 @@ QueueHandle_t xReturn = NULL;
 		else
 		{
 			/* Jump past the queue structure to find the location of the queue
-			storage area. */
-			pxNewQueue->pcHead = ( ( int8_t * ) pxNewQueue ) + sizeof( Queue_t );
+			storage area - adding the padding bytes to get a better alignment. */
+			pxNewQueue->pcHead = pcAllocatedBuffer + sizeof( Queue_t );
 		}
 
 		/* Initialise the queue members as described above where the queue type
@@ -444,6 +447,7 @@ QueueHandle_t xReturn = NULL;
 			traceCREATE_MUTEX_FAILED();
 		}
 
+		configASSERT( pxNewQueue );
 		return pxNewQueue;
 	}
 
@@ -1218,9 +1222,9 @@ Queue_t * const pxQueue = ( Queue_t * ) xQueue;
 	if the item size is not 0. */
 	configASSERT( pxQueue->uxItemSize == 0 );
 
-	/* Normally a mutex would not be given from an interrupt, especially if
-	there is a mutex holder, as priority inheritance makes no sense for an
-	interrupts, only tasks. */
+	/* Normally a mutex would not be given from an interrupt, and doing so is
+	definitely wrong if there is a mutex holder as priority inheritance makes no
+	sense for an interrupts, only tasks. */
 	configASSERT( !( ( pxQueue->uxQueueType == queueQUEUE_IS_MUTEX ) && ( pxQueue->pxMutexHolder != NULL ) ) );
 
 	/* RTOS ports that support interrupt nesting have the concept of a maximum
@@ -2399,7 +2403,7 @@ BaseType_t xReturn;
 
 #if ( configUSE_TIMERS == 1 )
 
-	void vQueueWaitForMessageRestricted( QueueHandle_t xQueue, TickType_t xTicksToWait, const BaseType_t xWaitIndefinitely )
+	void vQueueWaitForMessageRestricted( QueueHandle_t xQueue, TickType_t xTicksToWait )
 	{
 	Queue_t * const pxQueue = ( Queue_t * ) xQueue;
 
@@ -2421,7 +2425,7 @@ BaseType_t xReturn;
 		if( pxQueue->uxMessagesWaiting == ( UBaseType_t ) 0U )
 		{
 			/* There is nothing in the queue, block for the specified period. */
-			vTaskPlaceOnEventListRestricted( &( pxQueue->xTasksWaitingToReceive ), xTicksToWait, xWaitIndefinitely );
+			vTaskPlaceOnEventListRestricted( &( pxQueue->xTasksWaitingToReceive ), xTicksToWait );
 		}
 		else
 		{
