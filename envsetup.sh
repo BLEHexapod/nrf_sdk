@@ -12,6 +12,9 @@ export LC_ALL=C
 export GCC_COLORS='error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quote=01'
 
 mkdir -p $SDK_ROOT/apps
+mkdir -p $SDK_ROOT/lib
+
+export SDK_LIBS="$SDK_ROOT/lib"
 
 function croot() {
     cd $SDK_ROOT

@@ -1,5 +1,6 @@
 .repo/
 apps/
+lib/
 tmp/
 documentation/html/
 documentation/latex/
